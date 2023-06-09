@@ -7,8 +7,8 @@ open System
 
 // ---------- Parsers ------------
 let parseIdentifierContent =
-    Parser.choice [ Parser.fromAnyOf<char list> ['a'..'z']; Parser.fromAnyOf<char list> ['A'..'Z'] ]
-    |> (fun parser -> parser.many1)
+    choice [ fromAnyOf ['a'..'z']; fromAnyOf ['A'..'Z'] ]
+    |> many1
     <!> (fun x -> x |> List.map (fun c -> c.ToString()) |> String.concat "")
 
 let parseIdentifier =  
@@ -16,31 +16,32 @@ let parseIdentifier =
     <!> (fun x -> { lexeme = x; tokenType = IDENTIFIER; })
 
 let parseStringContent =
-    Parser.choice [ Parser.fromAnyOf<char list> ['a'..'z']; Parser.fromAnyOf<char list> ['A'..'Z']; Parser.fromAnyOf<char list> [' '; '\t'; '\n'; '\r'] ]
-    |> (fun parser -> parser.many1)
+    choice [ fromAnyOf ['a'..'z']; fromAnyOf ['A'..'Z']; fromAnyOf [' '; '\t'; '\n'; '\r'] ]
+    |> many1
     <!> (fun x -> x |> List.map (fun c -> c.ToString()) |> String.concat "")
 
 let parseString = 
-    let firstQuoteParser = Parser.fromString<String> "\""
-    let secondQuoteParser = Parser.fromString<String> "\""
+    let firstQuoteParser = fromString "\""
+    let secondQuoteParser = fromString "\""
+    let stringContentParser = parseStringContent
 
-    parseStringContent.between firstQuoteParser secondQuoteParser
+    between firstQuoteParser stringContentParser secondQuoteParser
     <!> (fun x -> { lexeme = x; tokenType = STRING; })
 
 let parseNewLine = 
-    Parser.fromChar<char> ('\n', true)
+    fromChar '\n'
     <!> (fun x -> { lexeme = x.ToString(); tokenType = NEWLINE; })
 
 let parseWhitespace = 
-    Parser.fromChar<char> (' ', false)
-    |> (fun parser -> parser.many1)
+    fromChar ' '
+    |> many1
     <!> (fun x -> { lexeme = x |> List.map (fun c -> c.ToString()) |> String.concat ""; tokenType = WHITESPACE; })
 
 let createSymbolParser (input: string, tokenType: TokenType) =
-    Parser.fromString<String> input
+    fromString input
     <!> (fun x -> { lexeme = x; tokenType = tokenType; })
 
-let parsers = Parser.choice (
+let parsers = choice (
     [ parseIdentifier; parseString; parseWhitespace; parseNewLine ]
     |> List.append (reservedKeywordsAndSymbols |> List.map (fun (input, tokenType) -> createSymbolParser (input, tokenType)))
 )
@@ -50,7 +51,7 @@ let rec parse (curr: ParserInput) (accumulator: Token list) =
     match curr.input.Trim() with
     | "" -> accumulator @ [{ lexeme = ""; tokenType = EOF; line = curr.line; column = curr.column + 1; }]
     | _ -> 
-        let result = parsers.run curr
+        let result = run parsers curr
 
         match result with
         | Success (output) ->
