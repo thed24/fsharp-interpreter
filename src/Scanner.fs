@@ -27,8 +27,19 @@ type ParserResult<'a> =
 
         innerFn
 
+type ParserInput = {
+    input: string
+    line: int
+    column: int
+}
+
+type ParserOutput<'a> = {
+    value: 'a
+    remainingInput: ParserInput
+}
+
 type Parser<'a> =
-    | Parser of (string -> ParserResult<'a * string>)
+    | Parser of (ParserInput -> ParserResult<ParserOutput<'a>>)
 
     member this.run input =
         let (Parser innerFn) = this
@@ -39,19 +50,23 @@ type Parser<'a> =
             let result = this.run input
 
             match result with
-            | Success(value, remaining) -> Success(transform value, remaining)
+            | Success(result) -> Success({ value = transform result.value; remainingInput = result.remainingInput })
             | Failure err -> Failure err
 
         Parser innerFn
 
     member this.andThen(parser2: Parser<'b>) =
         let innerFn input =
-            let result1 = this.run input
-            let result2 = result1.bind (fun (result1, remaining) -> parser2.run remaining)
+            let result = this.run input
 
-            match result1, result2 with
-            | Success(result1, remaining), Success(result2, remaining2) -> Success((result1, result2), remaining2)
-            | _ -> Failure "Error"
+            match result with
+            | Success(result) ->
+                let result2 = parser2.run result.remainingInput
+
+                match result2 with
+                | Success(result2) -> Success({ value = (result.value, result2.value); remainingInput = result2.remainingInput })
+                | Failure err -> Failure err
+            | Failure err -> Failure err
 
         Parser innerFn
 
@@ -68,7 +83,7 @@ type Parser<'a> =
         Parser innerFn
 
     static member asParser(x: 'a) =
-        let innerFn input = Success(x, input)
+        let innerFn input = Success({ value = x; remainingInput = input })
         Parser innerFn
 
     static member (.>>.)(parser1: Parser<'a>, parser2: Parser<'b>) = parser1.andThen parser2
@@ -77,30 +92,42 @@ type Parser<'a> =
 
     static member (<!>)(parser: Parser<'a>, transform: ('a -> 'b)) = parser.map transform
 
+    static member (.>>)(parser1: Parser<'a>, parser2: Parser<'b>) =
+        parser1 .>>. parser2
+        <!> (fun (a,b) -> a)
+
+    static member (>>.) (parser1: Parser<'a>, parser2: Parser<'b>) =
+        parser1 .>>. parser2
+        <!> (fun (a,b) -> b)
+
     member this.apply(parser2: Parser<('a -> 'b)>) =
         (this.andThen parser2) <!> (fun (f: 'a, y: 'a -> 'b) -> y f)
 
     static member (<*>)(parser1: Parser<'a>, parser2) = parser1.apply parser2
 
-    static member fromChar(charToMatchOn: char) =
-        let scanner input =
-            if System.String.IsNullOrWhiteSpace input then
+    static member fromChar<'a>(charToMatchOn: char, ?newLine: bool) =
+        let scanner (input: ParserInput) =
+            if System.String.IsNullOrWhiteSpace input.input then
                 Failure "No more input"
             else
-                let first = input.[0]
+                let newLine = defaultArg newLine false
+
+                let first = input.input.[0]
 
                 if first = charToMatchOn then
-                    let remaining = input.[1..]
-                    Success(charToMatchOn, remaining)
+                    let remaining = input.input.[1..]
+                    let newColumn = input.column + 1
+                    let newLineNum = if newLine = true then (input.line + 1) else input.line
+                    Success({ value = charToMatchOn; remainingInput = { input = remaining; column = newColumn; line = newLineNum } })
                 else
                     let error = sprintf "Expecting '%c', got '%c'" charToMatchOn first
                     Failure error
 
         Parser scanner
 
-    static member fromAnyOf listOfChars =
+    static member fromAnyOf<'a> listOfChars =
         listOfChars
-        |> List.map Parser.fromChar
+        |> List.map Parser.fromChar<'a>
         |> List.reduce (fun acc parser -> acc.orElse parser)
 
     static member choice(listOfParsers: Parser<'a> list) =
@@ -116,21 +143,37 @@ type Parser<'a> =
             let parserOfList2 = parserOfList.map (fun list -> fun item -> item :: list)
             parser <*> parserOfList2
 
-    static member fromString(str: string) =
-        str |> List.ofSeq |> List.map Parser.fromChar |> Parser.sequence
+    static member fromString<'a>(str: string) =
+        str |> List.ofSeq |> List.map Parser.fromChar<'a> |> Parser.sequence
         <!> charListToStr
 
     member this.parseZeroOrMore input =
         let firstResult = this.run input
 
         match firstResult with
-        | Failure err -> ([], input)
-        | Success(firstValue, inputAfterFirstParse) ->
-            let (subsequentValues, remainingInput) = this.parseZeroOrMore inputAfterFirstParse
-            let values = firstValue :: subsequentValues
-            (values, remainingInput)
+        | Failure err -> { value = []; remainingInput = input}
+        | Success(result) ->
+            let nextResult = this.parseZeroOrMore result.remainingInput
+            { value = result.value :: nextResult.value; remainingInput = nextResult.remainingInput }
+
+    member this.parseOneOrMore input =
+        let firstResult = this.run input
+
+        match firstResult with
+        | Failure err -> Failure err
+        | Success(result) ->
+            let nextResult = this.parseZeroOrMore result.remainingInput
+            Success({ value = result.value :: nextResult.value; remainingInput = nextResult.remainingInput })
 
     member this.many =
         let innerFn input = Success(this.parseZeroOrMore input)
 
         Parser innerFn
+
+    member this.many1 =
+        let innerFn input = this.parseOneOrMore input
+
+        Parser innerFn
+
+    member this.between parser1 parser2 =
+        parser1 >>. this .>> parser2
