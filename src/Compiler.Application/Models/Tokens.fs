@@ -81,7 +81,8 @@ let reservedKeywordsAndSymbols =
       ("var", VAR)
       ("while", WHILE) ]
     
-let reservedKeywordsAndSymbolsMap = reservedKeywordsAndSymbols |> List.map id |> Map.ofList
+let reservedKeywordsAndSymbolsMap =
+    reservedKeywordsAndSymbols |> List.map id |> Map.ofList
 
 type Token = { TokenType: TokenType; Lexeme: string; Line: int; Column: int }
 

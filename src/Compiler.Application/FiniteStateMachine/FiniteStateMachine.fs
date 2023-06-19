@@ -23,11 +23,11 @@ let newlineState (curr: TokenizerInput) =
     let newline, curr = createToken curr NEWLINE "\n"
     (newline, curr)
 
-let letterState (curr: TokenizerInput) =
+let letterState (reservedMap: Map<string, TokenType>) (curr: TokenizerInput) =
     let string = curr.Input |> Seq.takeWhile Char.IsLetter |> Seq.toList |> String.Concat
 
     let tokenType =
-        match reservedKeywordsAndSymbolsMap |> Map.tryFind string with
+        match reservedMap |> Map.tryFind string with
         | Some tokenType -> tokenType
         | None -> IDENTIFIER
 
@@ -61,17 +61,19 @@ let defaultState (curr: TokenizerInput) =
     (error, curr)
 
 let tokenizeUsingFsm (curr: TokenizerInput) (accumulator: Token list) =
+    let map = reservedKeywordsAndSymbolsMap
+
     let rec internalFn (curr: TokenizerInput) (accumulator: Token list) =
         if curr.Input.Length = 0 then
             accumulator @ [ { Lexeme = ""; TokenType = EOF; Line = curr.Line; Column = curr.Column } ]
         else
             match curr.Input[0] with
-            | char when char = '\n' -> nextState curr accumulator newlineState internalFn
-            | char when char = '"' -> nextState curr accumulator stringState internalFn
             | char when Char.IsWhiteSpace(char) -> nextState curr accumulator whitespaceState internalFn
             | char when (Char.IsSymbol(char) || Char.IsPunctuation(char)) -> nextState curr accumulator symbolState internalFn
-            | char when Char.IsLetter(char) -> nextState curr accumulator letterState internalFn
+            | char when Char.IsLetter(char) -> nextState curr accumulator (letterState map) internalFn
             | char when Char.IsNumber(char) -> nextState curr accumulator numberState internalFn
+            | char when char = '"' -> nextState curr accumulator stringState internalFn
+            | char when char = '\n' -> nextState curr accumulator newlineState internalFn
             | _ -> nextState curr accumulator defaultState internalFn
 
     internalFn curr accumulator
