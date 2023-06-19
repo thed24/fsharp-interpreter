@@ -1,2 +1,0 @@
-var language = "lox";
-language = "not lox now";

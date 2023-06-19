@@ -1,15 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Include="Input.fs" />
-    <Compile Include="Tokens.fs" />
-    <Compile Include="Scanner.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Include="Models/Tokens.fs"/>
+        <Compile Include="Parsing/Syntax.fs"/>
+        <Compile Include="FiniteStateMachine/FiniteStateMachine.fs"/>
+        <Compile Include="Scanning/Tokenizer.fs"/>
+        <Compile Include="ParserCombinator\ParserCombinator.fs"/>
+        <Compile Include="ParserCombinator\Parsers.fs"/>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
 </Project>

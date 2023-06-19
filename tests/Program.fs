@@ -1,1 +1,3 @@
-module Program = let [<EntryPoint>] main _ = 0
+module Tests =
+    [<EntryPoint>]
+    let main _ = 0

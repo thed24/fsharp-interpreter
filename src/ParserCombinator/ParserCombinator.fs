@@ -1,32 +1,23 @@
-module Scanner
+module ParserCombinator
+
+open Tokens
 
 type ParserResult<'a> =
     | Success of 'a
     | Failure of string
 
-type ParserInput = {
-    input: string
-    line: int
-    column: int
-}
+type ParserOutput<'a> = { value: 'a; remainingInput: TokenizerInput }
 
-type ParserOutput<'a> = {
-    value: 'a
-    remainingInput: ParserInput
-}
+type Parser<'a> = Parser of (TokenizerInput -> ParserResult<ParserOutput<'a>>)
 
-type Parser<'a> =
-    | Parser of (ParserInput -> ParserResult<ParserOutput<'a>>)
+let charListToStr (charList: char list) = charList |> List.toArray |> System.String
 
-let charListToStr (charList: char list) =
-    charList |> List.toArray |> System.String
-
-let run (parser: Parser<'a>) (input: ParserInput) =
+let run (parser: Parser<'a>) (input: TokenizerInput) =
     let (Parser innerFn) = parser
     innerFn input
 
 let map (transform: 'a -> 'b) (parser: Parser<'a>) =
-    let innerFn (input: ParserInput) =
+    let innerFn (input: TokenizerInput) =
         let result = run parser input
 
         match result with
@@ -58,12 +49,13 @@ let orElse (firstParser: Parser<'a>) (secondParser: Parser<'a>) =
         match result1, result2 with
         | Success _, _ -> result1
         | _, Success _ -> result2
-        | Failure err1, Failure err2 -> Failure(sprintf "%s\n%s" err1 err2)
+        | Failure err1, Failure err2 -> Failure $"%s{err1}\n%s{err2}"
 
     Parser innerFn
 
 let asParser (x: 'a) =
     let innerFn input = Success({ value = x; remainingInput = input })
+
     Parser innerFn
 
 let (.>>.) (parser1: Parser<'a>) (parser2: Parser<'b>) = andThen parser1 parser2
@@ -72,48 +64,37 @@ let (<|>) (parser1: Parser<'a>) (parser2: Parser<'a>) = orElse parser1 parser2
 
 let (<!>) (parser: Parser<'a>) (transform: 'a -> 'b) = map transform parser
 
-let (.>>) (parser1: Parser<'a>) (parser2: Parser<'a>) =
-    parser1 .>>. parser2
-    <!> (fun (a, _) -> a)
+let (.>>) (parser1: Parser<'a>) (parser2: Parser<'a>) = parser1 .>>. parser2 <!> (fun (a, _) -> a)
 
-let (>>.) (parser1: Parser<'a>) (parser2: Parser<'a>) =
-    parser1 .>>. parser2
-    <!> (fun (_, b) -> b)
+let (>>.) (parser1: Parser<'a>) (parser2: Parser<'a>) = parser1 .>>. parser2 <!> (fun (_, b) -> b)
 
-let apply (firstParser: Parser<'a>) (secondParser: Parser<'a -> 'b>) =
-    (firstParser .>>. secondParser)
-    |> map (fun (f, x) -> x f)
+let apply (firstParser: Parser<'a>) (secondParser: Parser<'a -> 'b>) = (firstParser .>>. secondParser) |> map (fun (f, x) -> x f)
 
-let (<*>) (firstParser: Parser<'a>) (secondParser: Parser<'a -> 'b>) = 
-    apply firstParser secondParser
+let (<*>) (firstParser: Parser<'a>) (secondParser: Parser<'a -> 'b>) = apply firstParser secondParser
 
 let fromChar (charToMatchOn: char) =
-    let scanner (input: ParserInput) =
-        if System.String.IsNullOrWhiteSpace input.input then
+    let scanner (input: TokenizerInput) =
+        if System.String.IsNullOrWhiteSpace input.Input then
             Failure "No more input"
         else
-            let first = input.input.[0]
+            let first = input.Input[0]
 
             if first = charToMatchOn then
-                let remaining = input.input.[1..]
-                let newColumn = input.column + 1
-                Success({ value = charToMatchOn; remainingInput = { input = remaining; column = newColumn; line = input.line } })
+                let remaining = input.Input[1..]
+                let newColumn = input.Column + 1
+
+                Success({ value = charToMatchOn; remainingInput = { Input = remaining; Column = newColumn; Line = input.Line } })
             else
-                let error = sprintf "Expecting '%c', got '%c'" charToMatchOn first
+                let error = $"Expecting '%c{charToMatchOn}', got '%c{first}'"
                 Failure error
 
     Parser scanner
 
-let fromAnyOf (listOfChars: char list) =
-    listOfChars
-    |> List.map fromChar
-    |> List.reduce orElse
+let fromAnyOf (listOfChars: char list) = listOfChars |> List.map fromChar |> List.reduce orElse
 
-let choice (listOfParsers: Parser<'a> list) =
-    List.reduce orElse listOfParsers
+let choice (listOfParsers: Parser<'a> list) = List.reduce orElse listOfParsers
 
-let lift2 f (xP: Parser<('a -> 'b)>) (yP: Parser<('b -> 'c)>) =
-    asParser f <*> xP <*> yP
+let lift2 f (xP: Parser<'a -> 'b>) (yP: Parser<'b -> 'c>) = asParser f <*> xP <*> yP
 
 let rec sequence parserList =
     match parserList with
@@ -123,26 +104,26 @@ let rec sequence parserList =
         let parserOfList2 = parserOfList |> map (fun list -> fun item -> item :: list)
         parser <*> parserOfList2
 
-let fromString (str: string) =
-    str |> List.ofSeq |> List.map fromChar |> sequence
-    <!> charListToStr
+let fromString (str: string) = str |> List.ofSeq |> List.map fromChar |> sequence <!> charListToStr
 
-let rec parseZeroOrMore (parser: Parser<'a>) (input: ParserInput) =
+let rec parseZeroOrMore (parser: Parser<'a>) (input: TokenizerInput) =
     let firstResult = run parser input
 
     match firstResult with
-    | Failure err -> { value = []; remainingInput = input }
+    | Failure _ -> { value = []; remainingInput = input }
     | Success result ->
         let nextResult = parseZeroOrMore parser result.remainingInput
+
         { value = result.value :: nextResult.value; remainingInput = nextResult.remainingInput }
 
-let rec parseOneOrMore (parser: Parser<'a>) (input: ParserInput) =
+let rec parseOneOrMore (parser: Parser<'a>) (input: TokenizerInput) =
     let firstResult = run parser input
 
     match firstResult with
     | Failure err -> Failure err
     | Success result ->
         let nextResult = parseZeroOrMore parser result.remainingInput
+
         Success({ value = result.value :: nextResult.value; remainingInput = nextResult.remainingInput })
 
 let many (parser: Parser<'a>) =
@@ -155,6 +136,4 @@ let many1 (parser: Parser<'a>) =
 
     Parser innerFn
 
-let between (leftParser: Parser<'a>) (middleParser: Parser<'a>) (rightParser: Parser<'a>) =
-    leftParser >>. middleParser .>> rightParser
-
+let between (leftParser: Parser<'a>) (middleParser: Parser<'a>) (rightParser: Parser<'a>) = leftParser >>. middleParser .>> rightParser
