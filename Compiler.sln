@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "compiler", "src\compiler.fsproj", "{A655226E-7851-4532-8714-381DB2FC3854}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Compiler.Application", "src\Compiler.Application\Compiler.Application.fsproj", "{A655226E-7851-4532-8714-381DB2FC3854}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "tests", "tests\tests.fsproj", "{6D715837-6D2F-4540-8A9C-1B42EBABC64F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Compiler.Tests", "tests\Compiler.Tests\Compiler.Tests.fsproj", "{6D715837-6D2F-4540-8A9C-1B42EBABC64F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "benchmarks", "benchmarks\benchmarks.fsproj", "{5B041675-6F18-498C-BFA1-93C099298BD5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Compiler.PerformanceTests", "tests\Compiler.PerformanceTests\Compiler.Benchmarks.fsproj", "{5B041675-6F18-498C-BFA1-93C099298BD5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
