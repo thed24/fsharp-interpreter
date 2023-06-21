@@ -5,12 +5,10 @@
         <RootNamespace>compiler</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
-        <Compile Include="Models/Tokens.fs" />
-        <Compile Include="Parsing/Syntax.fs" />
-        <Compile Include="FiniteStateMachine/FiniteStateMachine.fs" />
-        <Compile Include="Scanning/Tokenizer.fs" />
-        <Compile Include="ParserCombinator\ParserCombinator.fs" />
-        <Compile Include="ParserCombinator\Parsers.fs" />
         <Compile Include="Program.fs" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\Compiler.Domain\Compiler.Domain.fsproj" />
+      <ProjectReference Include="..\Compiler.Models\Compiler.Models.fsproj" />
     </ItemGroup>
 </Project>

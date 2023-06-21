@@ -4,9 +4,14 @@ open Tokens
 open System
 
 let createToken (input: TokenizerInput) (tokenType: TokenType) (lexeme: string) =
-    let line = if tokenType = NEWLINE then input.Line + 1 else input.Line
-    let length = if tokenType = WHITESPACE then 1 else lexeme.Length
-    let column = input.Column + length
+    let line = match (tokenType, lexeme) with
+                    | NEWLINE, _ -> input.Line + 1
+                    | _ -> input.Line
+    let length = match (tokenType, lexeme) with
+                    | STRING, _ -> lexeme.Length + 2
+                    | _, "" -> 1
+                    | _ -> lexeme.Length
+    let column = if tokenType = STRING then input.Column + length + 2 else input.Column + length
 
     ({ TokenType = tokenType; Lexeme = lexeme; Line = line; Column = column }, { Input = input.Input.Substring(length); Line = line; Column = column })
     
@@ -52,7 +57,8 @@ let symbolState (curr: TokenizerInput) =
     (identifier, curr)
     
 let stringState (curr: TokenizerInput) =
-    let chars = curr.Input |> Seq.takeWhile (fun c -> c <> '"') |> Seq.toList
+    let chars = curr.Input |> Seq.skip 1 |> Seq.takeWhile (fun c -> c <> '"') |> Seq.toList
+
     let string, curr = createToken curr STRING (String.Concat(chars))
     (string, curr)
     
@@ -68,12 +74,12 @@ let tokenizeUsingFsm (curr: TokenizerInput) (accumulator: Token list) =
             accumulator @ [ { Lexeme = ""; TokenType = EOF; Line = curr.Line; Column = curr.Column } ]
         else
             match curr.Input[0] with
+            | char when char = '"' -> nextState curr accumulator stringState internalFn
+            | char when char = '\n' -> nextState curr accumulator newlineState internalFn
             | char when Char.IsWhiteSpace(char) -> nextState curr accumulator whitespaceState internalFn
             | char when (Char.IsSymbol(char) || Char.IsPunctuation(char)) -> nextState curr accumulator symbolState internalFn
             | char when Char.IsLetter(char) -> nextState curr accumulator (letterState map) internalFn
             | char when Char.IsNumber(char) -> nextState curr accumulator numberState internalFn
-            | char when char = '"' -> nextState curr accumulator stringState internalFn
-            | char when char = '\n' -> nextState curr accumulator newlineState internalFn
             | _ -> nextState curr accumulator defaultState internalFn
 
     internalFn curr accumulator

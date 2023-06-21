@@ -89,3 +89,5 @@ type Token = { TokenType: TokenType; Lexeme: string; Line: int; Column: int }
 type PartialToken = { TokenType: TokenType; Lexeme: string }
 
 type TokenizerInput = { Input: string; Line: int; Column: int }
+
+type EnrichedToken<'a> = { TokenType: TokenType; Value: 'a; Line: int; Column: int }

@@ -14,15 +14,25 @@ open Tokens
                     | "(" expression ")" ;
  *)
 
+type PrimaryType<'a> =
+    | Token of Token
+    | Expression of 'a
+
 type Binary<'a> = { Left: 'a; Operator: Token; Right: 'a }
 type Unary<'a> = { Operator: Token; Right: 'a }
-type Primary = { Value: Token }
+type Primary<'a> = { Value: PrimaryType<'a> }
 
 type Expression =
-    | Expression of Expression
     | BinaryExpr of Binary<Expression>
     | UnaryExpr of Unary<Expression>
-    | LiteralExpr of Primary
+    | LiteralExpr of Primary<Expression>
+    
+type PrimaryValue =
+    | Number of float
+    | String of string
+    | Boolean of bool
+    | Nil
+    | Expression of Expression
 
 type UnexpectedEndOfInputError = { Message: string }
 type MissingRightOperandError = { Line: int; Column: int; Operator: Token }
@@ -40,14 +50,14 @@ let peek (input: ExpressionInput) (expectations: TokenType list) : Token option 
     | head :: _ -> if expectations |> List.exists (fun expectation -> expectation = head.TokenType) then Some head else None
 
 let fakeExpression (input: ExpressionInput) (error: Error) : Expression * ExpressionInput =
-    Expression(LiteralExpr { Value = { TokenType = FAKE; Lexeme = ""; Line = 0; Column = 0 } }), { Tokens = input.Tokens; Errors = error :: input.Errors }
+    LiteralExpr { Value = PrimaryType.Token { TokenType = FAKE; Lexeme = ""; Line = 0; Column = 0 } }, { Tokens = input.Tokens; Errors = error :: input.Errors }
 
 // ---------- Parsers ------------
 let rec primary (input: ExpressionInput) : Expression * ExpressionInput =
     let token = peek input [ NUMBER; STRING; TRUE; FALSE; NIL ]
 
     match token with
-    | Some token -> Expression(LiteralExpr { Value = token }), { Tokens = List.tail input.Tokens; Errors = input.Errors }
+    | Some token -> LiteralExpr { Value = PrimaryType.Token token }, { Tokens = List.tail input.Tokens; Errors = input.Errors }
     | None ->
         let maybeToken = input.Tokens |> List.tryHead
 
@@ -71,7 +81,7 @@ let rec binary (input: ExpressionInput) (expectations: TokenType list) (next: Ex
         let operator = peek input expectations
 
         match operator with
-        | None -> Expression left, { Tokens = input.Tokens; Errors = input.Errors }
+        | None -> left, input
         | Some operator ->
             let input' = { Tokens = List.tail input.Tokens; Errors = input.Errors }
             let right, updatedInput = next input'
@@ -101,12 +111,14 @@ let expression (tokens: Token list) : Expression * ExpressionInput =
 // ----- Pretty Printing -----
 let rec prettyPrint (expr: Expression) : string =
     match expr with
-    | Expression innerExpr -> prettyPrint innerExpr
     | LiteralExpr primary -> prettyPrintPrimary primary
     | UnaryExpr unary -> prettyPrintUnary unary
     | BinaryExpr binary -> prettyPrintBinary binary
 
-and prettyPrintPrimary (primary: Primary) : string = primary.Value.Lexeme
+and prettyPrintPrimary (primary: Primary<Expression>) : string =
+    match primary.Value with
+        | PrimaryType.Token token -> token.Lexeme
+        | PrimaryType.Expression expr -> prettyPrint expr
 
 and prettyPrintUnary (unary: Unary<Expression>) : string =
     match unary.Operator.TokenType with
