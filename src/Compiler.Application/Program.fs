@@ -1,27 +1,29 @@
 ﻿module Program
 
 open Tokenizer
-open Syntax
+open Expression
 open FiniteStateMachine
-open Evaluating
+open ExpressionEvaluation
+open StatementEvaluation
+open Statement
 
 [<EntryPoint>]
 let main _ =
-    let input = "1 + 2 * 7.32"
-    let tokens = tokenize tokenizeUsingFsm input
-    let syntax, state = expression tokens
-    let result = evaluate syntax
-
-    printfn "Tokens:"
-    tokens |> List.iter (fun token -> printfn $"%A{token}")
-
-    printfn "Syntax:"
-    printfn $"%A{prettyPrint syntax}"
-
-    printfn "Syntax Errors:"
-    printfn $"%A{prettyPrintErrors state.Errors}"
+    //let input = "1 + 2 * \"test\""
+    let input = "print 1 + 2 * 3"
     
-    printfn "Evaluation:"
-    printfn $"%A{result}"
+    let tokens = tokenize tokenizeUsingFsm input
+
+    // let syntax, state = expression tokens
+    let syntax, state = statement tokens
+    
+    // let result = evaluateExpression syntax
+    let maybeError = evaluateStatement syntax
+
+    // printfn "Result: %A" result
+
+    match maybeError with
+    | Some error -> printfn "Error: %s" error
+    | None -> printfn "Success"
 
     0

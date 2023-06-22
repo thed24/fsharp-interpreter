@@ -4,7 +4,7 @@ open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Running
 open Tokenizer
 open Tokens
-open Syntax
+open Expression
 open Parsers
 open FiniteStateMachine
 

@@ -6,8 +6,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Parsing\Syntax.fs" />
-      <Compile Include="Evaluating\Evaluating.fs" />
+      <Compile Include="Parsing\SyntaxErrors.fs" />
+      <Compile Include="Parsing\Expression.fs" />
+      <Compile Include="Parsing\Statement.fs" />
+      <Compile Include="Evaluating\ExpressionEvaluation.fs" />
+      <Compile Include="Evaluating\StatementEvaluation.fs" />
       <Compile Include="Lexing\Parsers.fs" />
       <Compile Include="Lexing\FiniteStateMachine.fs" />
       <Compile Include="Lexing\Tokenizer.fs" />

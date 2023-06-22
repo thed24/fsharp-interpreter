@@ -1,8 +1,9 @@
-module Syntax
+module Expression
 
+open SyntaxErrors
 open Tokens
 
-(*
+(*    
     expression     → equality ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
@@ -34,27 +35,20 @@ type PrimaryValue =
     | Nil
     | Expression of Expression
 
-type UnexpectedEndOfInputError = { Message: string }
-type MissingRightOperandError = { Line: int; Column: int; Operator: Token }
-
-type Error =
-    | UnexpectedEndOfInput of UnexpectedEndOfInputError
-    | MissingRightOperand of MissingRightOperandError
-
-type ExpressionInput = { Tokens: Token list; Errors: Error list }
+type ExpressionInput = { Tokens: Token list; Errors: SyntaxError list }
 
 // ---------- Helpers ------------
-let peek (input: ExpressionInput) (expectations: TokenType list) : Token option =
-    match input.Tokens with
+let peek (tokens: Token list) (expectations: TokenType list) : Token option =
+    match tokens with
     | [] -> None
     | head :: _ -> if expectations |> List.exists (fun expectation -> expectation = head.TokenType) then Some head else None
 
-let fakeExpression (input: ExpressionInput) (error: Error) : Expression * ExpressionInput =
+let fakeExpression (input: ExpressionInput) (error: SyntaxError) : Expression * ExpressionInput =
     LiteralExpr { Value = PrimaryType.Token { TokenType = FAKE; Lexeme = ""; Line = 0; Column = 0 } }, { Tokens = input.Tokens; Errors = error :: input.Errors }
 
 // ---------- Parsers ------------
 let rec primary (input: ExpressionInput) : Expression * ExpressionInput =
-    let token = peek input [ NUMBER; STRING; TRUE; FALSE; NIL ]
+    let token = peek input.Tokens [ NUMBER; STRING; TRUE; FALSE; NIL ]
 
     match token with
     | Some token -> LiteralExpr { Value = PrimaryType.Token token }, { Tokens = List.tail input.Tokens; Errors = input.Errors }
@@ -66,7 +60,7 @@ let rec primary (input: ExpressionInput) : Expression * ExpressionInput =
         | Some token -> fakeExpression input (MissingRightOperand { Line = token.Line; Column = token.Column; Operator = token })
 
 let rec unary (input: ExpressionInput) : Expression * ExpressionInput =
-    let operator = peek input [ MINUS; BANG ]
+    let operator = peek input.Tokens [ MINUS; BANG ]
 
     match operator with
     | None -> primary input
@@ -78,7 +72,7 @@ let rec unary (input: ExpressionInput) : Expression * ExpressionInput =
 
 let rec binary (input: ExpressionInput) (expectations: TokenType list) (next: ExpressionInput -> Expression * ExpressionInput) : Expression * ExpressionInput =
     let rec binaryInner left input =
-        let operator = peek input expectations
+        let operator = peek input.Tokens expectations
 
         match operator with
         | None -> left, input
@@ -132,9 +126,9 @@ and prettyPrintBinary (binary: Binary<Expression>) : string =
     let right = prettyPrint binary.Right
     "(" + left + " " + operator + " " + right + ")"
 
-and prettyPrintError (error: Error) : string =
+and prettyPrintError (error: SyntaxError) : string =
     match error with
     | UnexpectedEndOfInput err -> err.Message
     | MissingRightOperand err -> $"Missing right operand for operator '%s{err.Operator.Lexeme}' at line %d{err.Line}, column %d{err.Column}"
 
-and prettyPrintErrors (errors: Error list) : string = errors |> List.map prettyPrintError |> String.concat "\n"
+and prettyPrintErrors (errors: SyntaxError list) : string = errors |> List.map prettyPrintError |> String.concat "\n"
