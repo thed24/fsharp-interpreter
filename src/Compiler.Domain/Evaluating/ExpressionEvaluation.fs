@@ -3,17 +3,17 @@ module ExpressionEvaluation
 open Expression
 open Tokens
 
-type Result = 
+type ExpressionResult = 
     | Success of PrimaryValue
     | Error of string
     
-let isTruthy (value: Result) =
+let isTruthy (value: ExpressionResult) =
     match value with
     | Success (PrimaryValue.Boolean false) -> false
     | Success PrimaryValue.Nil -> false
     | _ -> true
     
-let matchLiteral (literal: Primary<Expression>) (evaluate: Expression -> Result): Result =
+let matchLiteral (literal: Primary<Expression>) (evaluate: Expression -> ExpressionResult): ExpressionResult =
     match literal.Value with
     | PrimaryType.Expression expr -> evaluate expr
     | PrimaryType.Token token ->
@@ -23,9 +23,10 @@ let matchLiteral (literal: Primary<Expression>) (evaluate: Expression -> Result)
         | TRUE -> Success (PrimaryValue.Boolean true)
         | FALSE -> Success (PrimaryValue.Boolean false)
         | NIL -> Success PrimaryValue.Nil
+        | IDENTIFIER -> Success (PrimaryValue.Identifier token.Lexeme)
         | _ -> Error "Invalid literal"
     
-let matchUnary (unary: Unary<Expression>) (evaluate: Expression -> Result): Result =
+let matchUnary (unary: Unary<Expression>) (evaluate: Expression -> ExpressionResult): ExpressionResult =
     match unary.Operator.TokenType with
     | BANG ->
         let right = evaluate unary.Right
@@ -38,7 +39,7 @@ let matchUnary (unary: Unary<Expression>) (evaluate: Expression -> Result): Resu
         | _ -> Error "Invalid unary operator"
     | _ -> Error "Invalid unary operator"
     
-let matchBinary (binary: Binary<Expression>) (evaluate: Expression -> Result): Result =
+let matchBinary (binary: Binary<Expression>) (evaluate: Expression -> ExpressionResult): ExpressionResult =
     match binary.Operator.TokenType with
     | PLUS ->
         let left = evaluate binary.Left
@@ -115,7 +116,7 @@ let matchBinary (binary: Binary<Expression>) (evaluate: Expression -> Result): R
         Success (PrimaryValue.Boolean (left <> right))
     | _ -> Error "Invalid binary operator"
 
-let rec evaluateExpression (expression: Expression): Result =
+let rec evaluateExpression (expression: Expression): ExpressionResult =
     match expression with
     | Expression.LiteralExpr expr -> matchLiteral expr evaluateExpression
     | Expression.UnaryExpr expr -> matchUnary expr evaluateExpression

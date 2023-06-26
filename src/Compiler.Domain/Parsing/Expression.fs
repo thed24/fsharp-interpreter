@@ -34,6 +34,7 @@ type PrimaryValue =
     | Boolean of bool
     | Nil
     | Expression of Expression
+    | Identifier of string
 
 type ExpressionInput = { Tokens: Token list; Errors: SyntaxError list }
 
@@ -48,7 +49,7 @@ let fakeExpression (input: ExpressionInput) (error: SyntaxError) : Expression * 
 
 // ---------- Parsers ------------
 let rec primary (input: ExpressionInput) : Expression * ExpressionInput =
-    let token = peek input.Tokens [ NUMBER; STRING; TRUE; FALSE; NIL ]
+    let token = peek input.Tokens [ NUMBER; STRING; TRUE; FALSE; NIL; IDENTIFIER ]
 
     match token with
     | Some token -> LiteralExpr { Value = PrimaryType.Token token }, { Tokens = List.tail input.Tokens; Errors = input.Errors }

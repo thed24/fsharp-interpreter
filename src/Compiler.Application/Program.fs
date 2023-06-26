@@ -10,20 +10,14 @@ open Statement
 [<EntryPoint>]
 let main _ =
     //let input = "1 + 2 * \"test\""
-    let input = "print 1 + 2 * 3"
+    let input = "var a = 1 + 2 * 3; print a; var a = \"test\"; print a;"
     
     let tokens = tokenize tokenizeUsingFsm input
 
     // let syntax, state = expression tokens
-    let syntax, state = statement tokens
+    let statements, state = statement { Tokens = tokens; Errors = []; } []
     
     // let result = evaluateExpression syntax
-    let maybeError = evaluateStatement syntax
-
-    // printfn "Result: %A" result
-
-    match maybeError with
-    | Some error -> printfn "Error: %s" error
-    | None -> printfn "Success"
+    let maybeErrors = evaluateStatements (List.rev statements) { Variables = Map.empty; Errors = [] }
 
     0
