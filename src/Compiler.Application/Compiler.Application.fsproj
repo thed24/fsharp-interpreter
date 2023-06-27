@@ -6,6 +6,9 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Include="Program.fs" />
+        <Content Include="input.txt">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\Compiler.Domain\Compiler.Domain.fsproj" />

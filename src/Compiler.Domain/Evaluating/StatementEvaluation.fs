@@ -3,9 +3,9 @@ module StatementEvaluation
 open Expression
 open Statement
 open Microsoft.FSharp.Core
-open Expression
 
 type EvaluationContext = {
+    Enclosing: EvaluationContext option
     Variables: Map<string, PrimaryValue>
     Errors: string list
 }
@@ -28,10 +28,14 @@ let rec printPrimaryValue value context =
             let variable = Map.tryFind id context.Variables
             match variable with
             | Some value -> printPrimaryValue value context
-            | None -> { context with Errors = sprintf "Variable %s not found" id :: context.Errors}
+            | None -> { context with Errors = $"Variable %s{id} not found" :: context.Errors}
         | PrimaryValue.Expression expr ->
             printfn "%s" "Coming soon, expression"
             context
+
+let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: EvaluationContext) (evaluateStatement): EvaluationContext =
+    let newContext = { context with Enclosing = Some context }
+    List.fold (fun context statement -> evaluateStatement statement context) newContext statement.Statements
 
 let evaluateVariableStatement (statement: VarStatement) (context: EvaluationContext): EvaluationContext =
     let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Initializer
@@ -51,11 +55,12 @@ let rec evaluatePrintStatement (statement: PrintStatement) (context: EvaluationC
     | ExpressionEvaluation.Success value -> printPrimaryValue value context
     | _ -> { context with Errors = "Print statement must be followed by an expression" :: context.Errors}
 
-let evaluateStatement (statement: Statement) (context: EvaluationContext): EvaluationContext =
+let rec evaluateStatement (statement: Statement) (context: EvaluationContext): EvaluationContext =
     match statement with
         | Statement.PrintStatement expr -> evaluatePrintStatement expr context
         | Statement.ExpressionStatement expr -> evaluateExpressionStatement expr context
         | Statement.VarStatement expr -> evaluateVariableStatement expr context
+        | Statement.BlockStatement statements -> evaluateBlockStatement statements context evaluateStatement
 
 let evaluateStatements (statements: Statement list) (context: EvaluationContext): EvaluationContext =
     List.fold (fun context statement -> evaluateStatement statement context) context statements

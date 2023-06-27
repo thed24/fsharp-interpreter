@@ -10,9 +10,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ParserCombinatorTests.fs" />
-        <Compile Include="FiniteStateMachineTests.fs" />
         <Compile Include="Program.fs" />
+        <Compile Include="Models\ParserCombinatorTests.fs" />
+        <Compile Include="Models\FiniteStateMachineTests.fs" />
+        <Compile Include="Domain\StatementEvaluationTests.fs" />
+        <Compile Include="Domain\ExpressionEvaluationTests.fs" />
     </ItemGroup>
 
     <ItemGroup>

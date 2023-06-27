@@ -10,7 +10,7 @@ let ``Given an identifier, successfully match`` () =
     let input = { Input = "var"; Line = 0; Column = 0 }
 
     // act
-    let result = tokenizeUsingFsm input []
+    let result = fsmTokenizer input []
 
     // assert
     let expected: Token list = [ { TokenType = VAR; Lexeme = "var"; Line = 0; Column = 3 }; { TokenType = EOF; Lexeme = ""; Line = 0; Column = 3 } ]
@@ -25,7 +25,7 @@ let ``Given a simple equation, successfully match`` () =
     let input = { Input = "var x = 1 + 2"; Line = 0; Column = 0 }
 
     // act
-    let result = tokenizeUsingFsm input []
+    let result = fsmTokenizer input []
 
     // assert
     let expected: Token list =

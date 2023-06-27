@@ -17,7 +17,10 @@ let createToken (input: TokenizerInput) (tokenType: TokenType) (lexeme: string) 
     
 let nextState (curr: TokenizerInput) (accumulator: Token list) (transition: TokenizerInput -> Token * TokenizerInput) internalFn =
     let nextToken, curr = transition curr
-    let nextAccumulator = if nextToken.TokenType <> WHITESPACE then accumulator @ [ nextToken ] else accumulator
+    let nextAccumulator = match nextToken.TokenType with
+                            | WHITESPACE -> accumulator
+                            | NEWLINE -> accumulator
+                            | _ -> accumulator @ [ nextToken ]
     internalFn curr nextAccumulator
 
 let whitespaceState (curr: TokenizerInput) =
@@ -66,7 +69,7 @@ let defaultState (curr: TokenizerInput) =
     let error, curr = createToken curr IDENTIFIER (curr.Input.[0].ToString())
     (error, curr)
 
-let tokenizeUsingFsm (curr: TokenizerInput) (accumulator: Token list) =
+let fsmTokenizer (curr: TokenizerInput) (accumulator: Token list) =
     let map = reservedKeywordsAndSymbolsMap
 
     let rec internalFn (curr: TokenizerInput) (accumulator: Token list) =

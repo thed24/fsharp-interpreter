@@ -1,3 +1,5 @@
+namespace Tests
+
 module Tests =
     [<EntryPoint>]
-    let main _ = 0
+    0 |> ignore

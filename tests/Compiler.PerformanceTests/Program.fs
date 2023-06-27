@@ -5,6 +5,7 @@ open BenchmarkDotNet.Running
 open Tokenizer
 open Tokens
 open Expression
+open Statement
 open Parsers
 open FiniteStateMachine
 
@@ -34,11 +35,16 @@ type Benchmarks() =
 
     [<Benchmark>]
     member self.FiniteStateMachineTokenizer() =
-        tokenize tokenizeUsingFsm code |> ignore
+        tokenize fsmTokenizer code |> ignore
 
     [<Benchmark>]
-    member self.RecursiveDescentParser() =
+    member self.RecursiveDescentExpressionParser() =
         expression tokens |> ignore
+        
+     
+    [<Benchmark>]
+    member self.RecursiveDescentStatementParser() =
+        statement { Tokens = tokens; Errors = [] } [] |> ignore
 
 [<EntryPoint>]
 let main _ =

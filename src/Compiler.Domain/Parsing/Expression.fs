@@ -103,33 +103,31 @@ let rec equality (input: ExpressionInput) : Expression * ExpressionInput =
 let expression (tokens: Token list) : Expression * ExpressionInput = 
     equality { Tokens = tokens; Errors = [] }
 
-// ----- Pretty Printing -----
-let rec prettyPrint (expr: Expression) : string =
+// ----- Strings -----
+let rec expressionToString (expr: Expression) : string =
     match expr with
-    | LiteralExpr primary -> prettyPrintPrimary primary
-    | UnaryExpr unary -> prettyPrintUnary unary
-    | BinaryExpr binary -> prettyPrintBinary binary
+    | LiteralExpr primary -> primaryExpressionToString primary
+    | UnaryExpr unary -> unaryExpressionToString unary
+    | BinaryExpr binary -> binaryExpressionToString binary
 
-and prettyPrintPrimary (primary: Primary<Expression>) : string =
+and primaryExpressionToString (primary: Primary<Expression>) : string =
     match primary.Value with
         | PrimaryType.Token token -> token.Lexeme
-        | PrimaryType.Expression expr -> prettyPrint expr
+        | PrimaryType.Expression expr -> expressionToString expr
 
-and prettyPrintUnary (unary: Unary<Expression>) : string =
+and unaryExpressionToString (unary: Unary<Expression>) : string =
     match unary.Operator.TokenType with
-    | MINUS -> "-(" + prettyPrint unary.Right + ")"
-    | BANG -> "!(" + prettyPrint unary.Right + ")"
+    | MINUS -> "-(" + expressionToString unary.Right + ")"
+    | BANG -> "!(" + expressionToString unary.Right + ")"
     | _ -> failwith "Unsupported unary operator"
 
-and prettyPrintBinary (binary: Binary<Expression>) : string =
-    let left = prettyPrint binary.Left
+and binaryExpressionToString (binary: Binary<Expression>) : string =
+    let left = expressionToString binary.Left
     let operator = binary.Operator.Lexeme
-    let right = prettyPrint binary.Right
+    let right = expressionToString binary.Right
     "(" + left + " " + operator + " " + right + ")"
 
-and prettyPrintError (error: SyntaxError) : string =
+and errorExpressionToString (error: SyntaxError) : string =
     match error with
     | UnexpectedEndOfInput err -> err.Message
     | MissingRightOperand err -> $"Missing right operand for operator '%s{err.Operator.Lexeme}' at line %d{err.Line}, column %d{err.Column}"
-
-and prettyPrintErrors (errors: SyntaxError list) : string = errors |> List.map prettyPrintError |> String.concat "\n"
