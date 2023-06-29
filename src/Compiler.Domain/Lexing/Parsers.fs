@@ -42,4 +42,4 @@ let rec tokenizeUsingParsers (curr: TokenizerInput) (accumulator: Token list) =
             let newAccumulator = if token.TokenType <> WHITESPACE then accumulator @ [ token ] else accumulator
 
             tokenizeUsingParsers output.remainingInput newAccumulator
-        | Failure(_) -> accumulator
+        | Failure _ -> accumulator

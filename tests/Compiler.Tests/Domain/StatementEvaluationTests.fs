@@ -73,4 +73,34 @@ print c;
     let expected = "inner a\r\nouter b\r\nglobal c\r\nouter a\r\nouter b\r\nglobal c\r\nglobal a\r\nglobal b\r\nglobal c\r\n"
 
     Assert.Equal(expected, actual)
+
+[<Fact>]
+let ``Given an if statement, evaluates the correct branch`` () =
+    // again with the bad practice, but it's a fun lil side project, don't judge me
     
+    // arrange
+    let stringWriter = new StringWriter()
+    Console.SetOut(stringWriter)
+    
+    let input = @"
+if (1 == 1) {
+  print ""1 is 1"";
+} else {
+  print ""1 is not 1"";
+}
+"
+
+    // act
+    let tokens = tokenize fsmTokenizer input
+    let statements, remaining = statement { Tokens = tokens; Errors = []; } []
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None }
+    
+    // assert
+    match context.Errors with
+    | [] -> ()
+    | _ -> failwith "Expected no errors"
+    
+    let actual = stringWriter.ToString()
+    let expected = "1 is 1\r\n"
+
+    Assert.Equal(expected, actual)

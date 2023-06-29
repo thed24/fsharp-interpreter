@@ -38,11 +38,26 @@ let rec printPrimaryValue value context =
             | None -> 
                 printfn $"Variable %s{id} not found"
                 context
-        | PrimaryValue.Expression expr ->
+        | PrimaryValue.Expression _ ->
             printfn "%s" "Coming soon, expression"
             context
 
-let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: EvaluationContext) (evaluateStatement): EvaluationContext =
+let evaluateIfStatement (statement: IfStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Condition
+    match evaluatedExpression with
+    | ExpressionEvaluation.Success value -> 
+        match value with
+        | PrimaryValue.Boolean bool ->
+            if bool then
+                evaluateStatement statement.ThenBranch context
+            else
+                match statement.ElseBranch with
+                | Some elseBranch -> evaluateStatement elseBranch context
+                | None -> context
+        | _ -> { context with Errors = "If statement condition must be a boolean" :: context.Errors}
+    | _ -> { context with Errors = "If statement condition must be a boolean" :: context.Errors}
+
+let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
     let newContext = {  Enclosing = Some context; Variables = Map.empty; Errors = [] }
     let newResult = List.fold (fun currContext statement -> evaluateStatement statement currContext) newContext statement.Statements
     { context with Errors = context.Errors @ newResult.Errors }
@@ -56,7 +71,7 @@ let evaluateVariableStatement (statement: VarStatement) (context: EvaluationCont
 let evaluateExpressionStatement (statement: ExpressionStatement) (context: EvaluationContext): EvaluationContext =
     let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Expression
     match evaluatedExpression with
-    | ExpressionEvaluation.Success value -> context
+    | ExpressionEvaluation.Success _ -> context
     | _ -> { context with Errors = "Expression statement must be followed by an expression" :: context.Errors}
 
 let rec evaluatePrintStatement (statement: PrintStatement) (context: EvaluationContext): EvaluationContext =
@@ -71,6 +86,7 @@ let rec evaluateStatement (statement: Statement) (context: EvaluationContext): E
         | Statement.ExpressionStatement expr -> evaluateExpressionStatement expr context
         | Statement.VarStatement expr -> evaluateVariableStatement expr context
         | Statement.BlockStatement statements -> evaluateBlockStatement statements context evaluateStatement
+        | Statement.IfStatement ifStatement -> evaluateIfStatement ifStatement context evaluateStatement
 
 let evaluateStatements (statements: Statement list) (context: EvaluationContext): EvaluationContext =
     List.fold (fun context statement -> evaluateStatement statement context) context statements

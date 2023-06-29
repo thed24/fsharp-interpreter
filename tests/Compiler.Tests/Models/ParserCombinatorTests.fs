@@ -29,7 +29,7 @@ let ``Given a string that does not match parser, fail`` () =
 
     // assert
     match result with
-    | Success(_) -> Assert.True(false)
+    | Success _ -> Assert.True(false)
     | Failure _ -> Assert.True(true)
 
 [<Fact>]
@@ -57,7 +57,7 @@ let ``Given a list of chars, fail to match a char and return the remaining strin
 
     // assert
     match result with
-    | Success(_) -> Assert.True(false)
+    | Success _ -> Assert.True(false)
     | Failure _ -> Assert.True(true)
 
 [<Fact>]
@@ -89,7 +89,7 @@ let ``Given a char parser and then another char parser, fail to match both`` () 
 
     // assert
     match result with
-    | Success(_) -> Assert.True(false)
+    | Success _ -> Assert.True(false)
     | Failure _ -> Assert.True(true)
 
 [<Fact>]
@@ -123,5 +123,5 @@ let ``Given a between parser for a string, when parsing a different string betwe
 
     // assert
     match result with
-    | Success(_) -> Assert.True(false)
+    | Success _ -> Assert.True(false)
     | Failure _ -> Assert.True(true)
