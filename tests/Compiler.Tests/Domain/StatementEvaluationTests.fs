@@ -1,5 +1,7 @@
 module StatementEvaluationTests
 
+open System
+open System.IO
 open Expression
 open StatementEvaluation
 open Statement
@@ -16,7 +18,7 @@ let ``Given addition and multiplication, returns result with precedence honored`
     // act
     let tokens = tokenize fsmTokenizer input
     let statements, remaining = statement { Tokens = tokens; Errors = []; } []
-    let context = evaluateStatements (List.rev statements) { Variables = Map.empty; Errors = [] }
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None } 
     
     // assert'
     match context.Errors with
@@ -26,3 +28,49 @@ let ``Given addition and multiplication, returns result with precedence honored`
     match context.Variables.["a"] with
     | PrimaryValue.Number actual -> Assert.Equal(expected, actual)
     | _ -> failwith "Expected number"
+    
+[<Fact>]
+let ``Given multiple lexical scopes, handles variables at each scope correctly`` () =
+    // i know this is bad practice, but it's a fun lil side project, don't judge me
+    
+    // arrange
+    let stringWriter = new StringWriter()
+    Console.SetOut(stringWriter)
+    
+    let input = @"
+var a = ""global a"";
+var b = ""global b"";
+var c = ""global c"";
+{
+  var a = ""outer a"";
+  var b = ""outer b"";
+  {
+    var a = ""inner a"";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+"
+
+    // act
+    let tokens = tokenize fsmTokenizer input
+    let statements, remaining = statement { Tokens = tokens; Errors = []; } []
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None }
+    
+    // assert
+    match context.Errors with
+    | [] -> ()
+    | _ -> failwith "Expected no errors"
+    
+    let actual = stringWriter.ToString()
+    let expected = "inner a\r\nouter b\r\nglobal c\r\nouter a\r\nouter b\r\nglobal c\r\nglobal a\r\nglobal b\r\nglobal c\r\n"
+
+    Assert.Equal(expected, actual)
+    

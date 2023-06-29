@@ -111,6 +111,6 @@ let rec statement input statements =
     let result, input = innerFn input
     
     match input.Tokens, peek input.Tokens [ EOF; ] with
-    | _, Some token when token.TokenType = EOF -> result :: statements, input
-    | [], _ -> result :: statements, input
-    | _ -> statement input (result :: statements)
+    | _, Some token when token.TokenType = EOF -> (statements @ [ result ]), input
+    | [], _ -> (statements @ [ result ]), input
+    | _ -> statement input (statements @ [ result ])

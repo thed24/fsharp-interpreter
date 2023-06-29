@@ -10,32 +10,42 @@ type EvaluationContext = {
     Errors: string list
 }
 
+let rec findInContexts id context =
+    match context.Variables.TryGetValue id with
+    | true, value -> Some value
+    | false, _ -> 
+        match context.Enclosing with
+        | Some enclosing -> findInContexts id enclosing
+        | None -> None
+
 let rec printPrimaryValue value context =
     match value with
         | PrimaryValue.String str ->
-            printfn "%s" str
+            printfn $"%s{str}"
             context
         | PrimaryValue.Number int ->
-            printfn "%f" int
+            printfn $"%f{int}"
             context
         | PrimaryValue.Boolean bool ->
-            printfn "%b" bool
+            printfn $"%b{bool}"
             context
         | PrimaryValue.Nil ->
             printfn "null"
             context
         | PrimaryValue.Identifier id ->
-            let variable = Map.tryFind id context.Variables
-            match variable with
+            match findInContexts id context with
             | Some value -> printPrimaryValue value context
-            | None -> { context with Errors = $"Variable %s{id} not found" :: context.Errors}
+            | None -> 
+                printfn $"Variable %s{id} not found"
+                context
         | PrimaryValue.Expression expr ->
             printfn "%s" "Coming soon, expression"
             context
 
 let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: EvaluationContext) (evaluateStatement): EvaluationContext =
-    let newContext = { context with Enclosing = Some context }
-    List.fold (fun context statement -> evaluateStatement statement context) newContext statement.Statements
+    let newContext = {  Enclosing = Some context; Variables = Map.empty; Errors = [] }
+    let newResult = List.fold (fun currContext statement -> evaluateStatement statement currContext) newContext statement.Statements
+    { context with Errors = context.Errors @ newResult.Errors }
 
 let evaluateVariableStatement (statement: VarStatement) (context: EvaluationContext): EvaluationContext =
     let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Initializer
