@@ -16,6 +16,15 @@ type Expression =
     | UnaryExpr of Unary<Expression>
     | LiteralExpr of Primary<Expression>
 
+    override this.ToString() =
+        match this with
+        | BinaryExpr { Left = left; Operator = op; Right = right } -> $"(%s{left.ToString()} %s{op.Lexeme.ToString()} %s{right.ToString()})"
+        | UnaryExpr { Operator = op; Right = right } -> $"(%s{op.Lexeme.ToString()} %s{right.ToString()})"
+        | LiteralExpr { Value = value } ->
+            match value with
+            | Token token -> token.Lexeme.ToString()
+            | Expression expr -> expr.ToString()
+
 type ExpressionInput = { Tokens: Token list; Errors: SyntaxError list }
 
 type PrimaryValue =

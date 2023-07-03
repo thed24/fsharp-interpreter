@@ -6,6 +6,8 @@ open Tokens
 
 (*    
     expression     → equality ;
+    logic_or       → logic_and ( "or" logic_and )* ;
+    logic_and      → equality ( "and" equality )* ;
     equality       → comparison ( ( "!=" | "==" ) comparison )* ;
     comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     term           → factor ( ( "-" | "+" ) factor )* ;
@@ -73,39 +75,15 @@ let rec term (input: ExpressionInput) : Expression * ExpressionInput =
 
 let rec comparison (input: ExpressionInput) : Expression * ExpressionInput = 
     binary input [ GREATER; GREATER_EQUAL; LESS; LESS_EQUAL ] term
-
+    
 let rec equality (input: ExpressionInput) : Expression * ExpressionInput = 
     binary input [ BANG_EQUAL; EQUAL_EQUAL ] comparison
 
-// ---------- Entry Point ------------
+let rec logicAnd (input: ExpressionInput) : Expression * ExpressionInput =
+    binary input [ AND ] equality
+
+let rec logicOr (input: ExpressionInput) : Expression * ExpressionInput =
+    binary input [ OR ] logicAnd
+
 let expression (tokens: Token list) : Expression * ExpressionInput = 
-    equality { Tokens = tokens; Errors = [] }
-
-// ----- Strings -----
-let rec expressionToString (expr: Expression) : string =
-    match expr with
-    | LiteralExpr primary -> primaryExpressionToString primary
-    | UnaryExpr unary -> unaryExpressionToString unary
-    | BinaryExpr binary -> binaryExpressionToString binary
-
-and primaryExpressionToString (primary: Primary<Expression>) : string =
-    match primary.Value with
-        | PrimaryType.Token token -> token.Lexeme
-        | PrimaryType.Expression expr -> expressionToString expr
-
-and unaryExpressionToString (unary: Unary<Expression>) : string =
-    match unary.Operator.TokenType with
-    | MINUS -> "-(" + expressionToString unary.Right + ")"
-    | BANG -> "!(" + expressionToString unary.Right + ")"
-    | _ -> failwith "Unsupported unary operator"
-
-and binaryExpressionToString (binary: Binary<Expression>) : string =
-    let left = expressionToString binary.Left
-    let operator = binary.Operator.Lexeme
-    let right = expressionToString binary.Right
-    "(" + left + " " + operator + " " + right + ")"
-
-and errorExpressionToString (error: SyntaxError) : string =
-    match error with
-    | UnexpectedEndOfInput err -> err.Message
-    | MissingRightOperand err -> $"Missing right operand for operator '%s{err.Operator.Lexeme}' at line %d{err.Line}, column %d{err.Column}"
+    logicOr { Tokens = tokens; Errors = [] }

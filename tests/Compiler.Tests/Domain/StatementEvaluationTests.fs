@@ -105,3 +105,23 @@ if (a == 1) {
     let expected = "a is 1\r\n"
 
     Assert.Equal(expected, actual)
+
+[<Fact>]
+let ``Given multiple logical operators, evaluates correctly`` () =
+    // arrange
+    let input = "var a = 1 == 1 and 2 == 2 and 3 == 3;"
+    let expected = true
+    
+    // act
+    let tokens = tokenize fsmTokenizer input
+    let statements, remaining = statement { Tokens = tokens; Errors = []; } []
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None } 
+    
+    // assert'
+    match context.Errors with
+    | [] -> ()
+    | _ -> failwith "Expected no errors"
+    
+    match context.Variables.["a"] with
+    | PrimaryValue.Boolean actual -> Assert.Equal(expected, actual)
+    | _ -> failwith "Expected boolean"
