@@ -41,7 +41,6 @@ type Benchmarks() =
     member self.RecursiveDescentExpressionParser() =
         expression tokens |> ignore
         
-     
     [<Benchmark>]
     member self.RecursiveDescentStatementParser() =
         statement { Tokens = tokens; Errors = [] } [] |> ignore

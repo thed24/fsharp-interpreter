@@ -1,4 +1,4 @@
-module SyntaxErrors
+module Errors
 
 open Tokens
 

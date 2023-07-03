@@ -1,6 +1,7 @@
 module Expression
 
-open SyntaxErrors
+open Errors
+open Evaluation
 open Tokens
 
 (*    
@@ -14,29 +15,6 @@ open Tokens
     primary        → NUMBER | STRING | "true" | "false" | "nil"
                     | "(" expression ")" ;
  *)
-
-type PrimaryType<'a> =
-    | Token of Token
-    | Expression of 'a
-
-type Binary<'a> = { Left: 'a; Operator: Token; Right: 'a }
-type Unary<'a> = { Operator: Token; Right: 'a }
-type Primary<'a> = { Value: PrimaryType<'a> }
-
-type Expression =
-    | BinaryExpr of Binary<Expression>
-    | UnaryExpr of Unary<Expression>
-    | LiteralExpr of Primary<Expression>
-    
-type PrimaryValue =
-    | Number of float
-    | String of string
-    | Boolean of bool
-    | Nil
-    | Expression of Expression
-    | Identifier of string
-
-type ExpressionInput = { Tokens: Token list; Errors: SyntaxError list }
 
 // ---------- Helpers ------------
 let peek (tokens: Token list) (expectations: TokenType list) : Token option =

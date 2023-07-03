@@ -1,5 +1,6 @@
 module ExpressionEvaluationTests
 
+open Evaluation
 open ExpressionEvaluation
 open Expression
 open Tokenizer
@@ -15,7 +16,7 @@ let ``Given addition and multiplication, returns result with precedence honored`
     // act
     let tokens = tokenize fsmTokenizer input
     let expression, remaining = expression tokens
-    let result = evaluateExpression expression
+    let result = evaluateExpression expression { Variables = Map.empty; Errors = []; Enclosing = None; }
     
     // assert'
     match result with

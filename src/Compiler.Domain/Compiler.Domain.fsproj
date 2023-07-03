@@ -6,7 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Parsing\SyntaxErrors.fs" />
       <Compile Include="Parsing\Expression.fs" />
       <Compile Include="Parsing\Statement.fs" />
       <Compile Include="Evaluating\ExpressionEvaluation.fs" />

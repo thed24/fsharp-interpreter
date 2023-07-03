@@ -2,7 +2,7 @@ module StatementEvaluationTests
 
 open System
 open System.IO
-open Expression
+open Evaluation
 open StatementEvaluation
 open Statement
 open Tokenizer
@@ -83,10 +83,11 @@ let ``Given an if statement, evaluates the correct branch`` () =
     Console.SetOut(stringWriter)
     
     let input = @"
-if (1 == 1) {
-  print ""1 is 1"";
+var a = 1;
+if (a == 1) {
+  print ""a is 1"";
 } else {
-  print ""1 is not 1"";
+  print ""a is not 1"";
 }
 "
 
@@ -101,6 +102,6 @@ if (1 == 1) {
     | _ -> failwith "Expected no errors"
     
     let actual = stringWriter.ToString()
-    let expected = "1 is 1\r\n"
+    let expected = "a is 1\r\n"
 
     Assert.Equal(expected, actual)

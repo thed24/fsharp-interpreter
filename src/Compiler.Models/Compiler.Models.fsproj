@@ -7,7 +7,9 @@
 
     <ItemGroup>
         <Compile Include="Tokens.fs" />
+        <Compile Include="Errors.fs" />
         <Compile Include="ParserCombinator.fs" />
+        <Compile Include="Evaluation.fs" />
     </ItemGroup>
 
 </Project>

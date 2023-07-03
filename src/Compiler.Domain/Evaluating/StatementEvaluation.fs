@@ -1,24 +1,10 @@
 module StatementEvaluation
 
-open Expression
+open Evaluation
 open Statement
 open Microsoft.FSharp.Core
 
-type EvaluationContext = {
-    Enclosing: EvaluationContext option
-    Variables: Map<string, PrimaryValue>
-    Errors: string list
-}
-
-let rec findInContexts id context =
-    match context.Variables.TryGetValue id with
-    | true, value -> Some value
-    | false, _ -> 
-        match context.Enclosing with
-        | Some enclosing -> findInContexts id enclosing
-        | None -> None
-
-let rec printPrimaryValue value context =
+let rec printPrimaryValue value (context: EvaluationContext) =
     match value with
         | PrimaryValue.String str ->
             printfn $"%s{str}"
@@ -33,7 +19,7 @@ let rec printPrimaryValue value context =
             printfn "null"
             context
         | PrimaryValue.Identifier id ->
-            match findInContexts id context with
+            match context.Find id with
             | Some value -> printPrimaryValue value context
             | None -> 
                 printfn $"Variable %s{id} not found"
@@ -43,7 +29,7 @@ let rec printPrimaryValue value context =
             context
 
 let evaluateIfStatement (statement: IfStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
-    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Condition
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Condition context
     match evaluatedExpression with
     | ExpressionEvaluation.Success value -> 
         match value with
@@ -63,19 +49,19 @@ let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: Eval
     { context with Errors = context.Errors @ newResult.Errors }
 
 let evaluateVariableStatement (statement: VarStatement) (context: EvaluationContext): EvaluationContext =
-    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Initializer
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Initializer context
     match evaluatedExpression with
     | ExpressionEvaluation.Success value -> { context with Variables = Map.add statement.Name.Lexeme value context.Variables}
     | _ -> { context with Errors = "Expression statement must be followed by an expression" :: context.Errors}
 
 let evaluateExpressionStatement (statement: ExpressionStatement) (context: EvaluationContext): EvaluationContext =
-    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Expression
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Expression context
     match evaluatedExpression with
     | ExpressionEvaluation.Success _ -> context
     | _ -> { context with Errors = "Expression statement must be followed by an expression" :: context.Errors}
 
 let rec evaluatePrintStatement (statement: PrintStatement) (context: EvaluationContext): EvaluationContext =
-    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Expression
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Expression context
     match evaluatedExpression with
     | ExpressionEvaluation.Success value -> printPrimaryValue value context
     | _ -> { context with Errors = "Print statement must be followed by an expression" :: context.Errors}

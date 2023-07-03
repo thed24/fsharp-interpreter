@@ -1,6 +1,7 @@
 module Statement
 
-open SyntaxErrors
+open Errors
+open Evaluation
 open Expression
 open Tokens
 
