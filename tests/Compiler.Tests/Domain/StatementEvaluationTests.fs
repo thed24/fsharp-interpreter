@@ -160,3 +160,66 @@ print a;
     match context.Variables.["a"] with
     | PrimaryValue.Number actual -> Assert.Equal(10.0, actual)
     | _ -> failwith "Expected number"
+
+[<Fact>]
+let ``Given a false expression, while loop does not execute`` () =
+    // arrange
+    let stringWriter = new StringWriter()
+    Console.SetOut(stringWriter)
+    
+    let input = @"
+var a = 10;
+while (a < 10) {
+  print a;
+  a = a + 1;
+}
+
+print a;
+"
+
+    // act
+    let tokens = tokenize fsmTokenizer input
+    let statements, remaining = statement { Tokens = tokens; Errors = []; } []
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None }
+    
+    // assert
+    match context.Errors with
+    | [] -> ()
+    | _ -> failwith "Expected no errors"
+    
+    let actual = stringWriter.ToString()
+    let expected = "10.000000\r\n"
+
+    Assert.Equal(expected, actual)
+    
+    match context.Variables.["a"] with
+    | PrimaryValue.Number actual -> Assert.Equal(10.0, actual)
+    | _ -> failwith "Expected number"
+
+[<Fact>]
+let ``Given a true expression, for loop executes`` () =
+    // arrange
+    let stringWriter = new StringWriter()
+    Console.SetOut(stringWriter)
+    
+    let input = @"
+for (var a = 1; a < 10; a = a + 1) {
+    print a;
+}
+"
+
+    // act
+    let tokens = tokenize fsmTokenizer input
+    let statements, remaining = statement { Tokens = tokens; Errors = []; } []
+    let context = evaluateStatements statements { Variables = Map.empty; Errors = []; Enclosing = None }
+    
+    // assert
+    match context.Errors with
+    | [] -> ()
+    | _ -> failwith "Expected no errors"
+    
+    let actual = stringWriter.ToString()
+    let expected = "1.000000\r\n2.000000\r\n3.000000\r\n4.000000\r\n5.000000\r\n6.000000\r\n7.000000\r\n8.000000\r\n9.000000\r\n"
+
+    Assert.Equal(expected, actual)
+    

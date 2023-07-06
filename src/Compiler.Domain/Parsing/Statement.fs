@@ -22,6 +22,10 @@ exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 block          → "{" declaration* "}" ;
 ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ;
+whileStmt      → "while" "(" expression ")" statement ;
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+                           expression? ";"
+                           expression? ")" statement ;
 *)
 
 // ---------- Types ------------
@@ -128,6 +132,7 @@ let assignment name tokens input requiresExistingVariable =
 
     match name, errors, semiColon with
     | Some nameToken, [], Some semicolonToken when semicolonToken.TokenType = SEMICOLON -> Statement.VarStatement { Name = nameToken; Initializer = expression; RequiresExistingVariable = requiresExistingVariable }, { Tokens = tokens; Errors = input.Errors }
+    | Some nameToken, [], Some semicolonToken when semicolonToken.TokenType = RIGHT_PAREN -> Statement.VarStatement { Name = nameToken; Initializer = expression; RequiresExistingVariable = requiresExistingVariable }, { Tokens = tokens; Errors = input.Errors }
     | Some _, [], _ -> fakeStatement input tokens (UnexpectedEndOfInput { Message = "Expected ';' after variable declaration."; })
     | Some _, _, _ -> fakeStatement input tokens (UnexpectedEndOfInput { Message = "Expected expression after variable declaration."; })
     | _ -> fakeStatement input tokens (UnexpectedEndOfInput { Message = "Expected variable name after 'var'."; })
@@ -163,15 +168,55 @@ let expressionStatement (input: StatementInput): Statement * StatementInput =
     match expression with
     | expression, { Tokens = tokens; Errors = errors } -> Statement.ExpressionStatement { Expression = expression }, { Tokens = tokens; Errors = errors }
 
+let forStatement (input: StatementInput) statement: Statement * StatementInput =
+    let forToken, tokens = (List.tryHead input.Tokens, List.tail input.Tokens)
+    let leftParen, tokens = (List.tryHead tokens, List.tail tokens)
+    let initializer, tokens, initializerErrors = 
+        match List.tryHead tokens with
+        | Some token when token.TokenType = VAR -> varStatement { Tokens = tokens; Errors = [] } |> fun (statement, output) -> (Some statement, output.Tokens, output.Errors)
+        | Some token when token.TokenType = SEMICOLON -> (None, tokens, [])
+        | _ -> (None, tokens, [ UnexpectedEndOfInput { Message = "Expected 'var' or ';' after 'for'."; } ])
+    let condition, tokens, conditionErrors =
+        match List.tryHead tokens with
+        | Some token when token.TokenType = SEMICOLON -> (None, tokens, [])
+        | _ -> expression tokens |> fun (expression, output) -> (Some expression, output.Tokens, output.Errors)
+    let semiColon, tokens = (List.tryHead tokens, List.tail tokens)
+    let increment, tokens, incrementErrors = 
+        match List.tryHead tokens with
+        | Some token when token.TokenType = RIGHT_PAREN -> (None, tokens, [])
+        | Some token when token.TokenType = SEMICOLON -> (None, tokens, [])
+        | Some token when token.TokenType = VAR -> varStatement { Tokens = tokens; Errors = [] } |> fun (statement, output) -> (Some statement, output.Tokens, output.Errors)
+        | Some token when token.TokenType = IDENTIFIER -> assignmentStatement { Tokens = tokens; Errors = [] } |> fun (statement, output) -> (Some statement, output.Tokens, output.Errors)
+        | _ -> (None, tokens, [ UnexpectedEndOfInput { Message = "Expected 'var', identifier, or ';' after 'for'."; } ])
+    let body, tokens, bodyErrors = parseBranch tokens statement
+    
+    match forToken, leftParen, initializer, condition, semiColon, increment, body with
+    | Some _, Some _, _, _, _, _, _ when initializerErrors <> [] -> fakeStatement input tokens (List.tryHead initializerErrors |> Option.get)
+    | Some _, Some _, _, _, _, _, _ when conditionErrors <> [] -> fakeStatement input tokens (List.tryHead conditionErrors |> Option.get)
+    | Some _, Some _, _, _, _, _, _ when incrementErrors <> [] -> fakeStatement input tokens (List.tryHead incrementErrors |> Option.get)
+    | Some _, Some _, _, _, _, _, _ when bodyErrors <> [] -> fakeStatement input tokens (List.tryHead bodyErrors |> Option.get)
+    | Some _, Some _, _, _, _, _, _ ->
+        let initializer = if initializer = None then Statement.ExpressionStatement { Expression = LiteralExpr { Value = PrimaryType.Token { TokenType = NIL; Lexeme = ""; Column = 0; Line = 0; } } } else Option.get initializer
+        let condition = if condition = None then LiteralExpr { Value = PrimaryType.Token { TokenType = TRUE; Lexeme = ""; Column = 0; Line = 0; } } else Option.get condition
+        let increment = if increment = None then Statement.ExpressionStatement { Expression = LiteralExpr { Value = PrimaryType.Token { TokenType = NIL; Lexeme = ""; Column = 0; Line = 0; } } } else Option.get increment
+        let body = if body = None then Statement.ExpressionStatement { Expression = LiteralExpr { Value = PrimaryType.Token { TokenType = NIL; Lexeme = ""; Column = 0; Line = 0; } } } else Option.get body
+        
+        let whileStatement = Statement.WhileStatement { Condition = condition; Body = Statement.BlockStatement { Statements = [ body; increment ]; }; }
+        let result = Statement.BlockStatement { Statements = [ initializer; whileStatement ]; }
+        
+        result, { Tokens = tokens; Errors = [] }
+    | _ -> fakeStatement input tokens (UnexpectedEndOfInput { Message = "Expected ')' after 'for' clauses."; })
+
 let rec statement input statements =
     let rec innerFn input =
-        match peek input.Tokens [ PRINT; VAR; LEFT_BRACE; IF; WHILE; IDENTIFIER ] with
+        match peek input.Tokens [ PRINT; VAR; LEFT_BRACE; IF; WHILE; IDENTIFIER; FOR ] with
         | Some token when token.TokenType = PRINT -> printStatement input
         | Some token when token.TokenType = VAR -> varStatement input
         | Some token when token.TokenType = LEFT_BRACE -> blockStatement input statement
         | Some token when token.TokenType = IF -> ifStatement input innerFn
         | Some token when token.TokenType = WHILE -> whileStatement input innerFn
         | Some token when token.TokenType = IDENTIFIER -> assignmentStatement input
+        | Some token when token.TokenType = FOR -> forStatement input innerFn
         | _ -> expressionStatement input
 
     let result, input = innerFn input
