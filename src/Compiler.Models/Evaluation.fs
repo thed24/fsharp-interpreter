@@ -54,3 +54,19 @@ type EvaluationContext =
         match findInternal id this with
         | Some value -> Some value
         | None -> None
+        
+    member this.Insert id value =
+        { this with Variables = this.Variables.Add(id, value) }
+        
+    member this.Update id value =
+        let rec updateInternal id value context =
+            match context.Variables.TryGetValue id with
+            | true, _ -> { context with Variables = context.Variables.Add(id, value) }
+            | false, _ ->
+                match context.Enclosing with
+                | Some enclosing ->
+                    let updatedEnclosing = updateInternal id value enclosing
+                    { context with Enclosing = Some updatedEnclosing }
+                | None -> context
+                
+        updateInternal id value this

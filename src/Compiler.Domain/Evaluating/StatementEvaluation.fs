@@ -28,6 +28,20 @@ let rec printPrimaryValue value (context: EvaluationContext) =
             printfn "%s" "Coming soon, expression"
             context
 
+let rec evaluateWhileStatement (statement: WhileStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
+    let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Condition context
+    match evaluatedExpression with
+    | ExpressionEvaluation.Success value -> 
+        match value with
+        | PrimaryValue.Boolean bool ->
+            if bool then
+                let updatedContext = evaluateStatement statement.Body context
+                evaluateWhileStatement statement updatedContext evaluateStatement
+            else
+                context
+        | _ -> { context with Errors = "While statement condition must be a boolean" :: context.Errors}
+    | _ -> { context with Errors = "While statement condition must be a boolean" :: context.Errors}
+
 let evaluateIfStatement (statement: IfStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
     let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Condition context
     match evaluatedExpression with
@@ -44,14 +58,21 @@ let evaluateIfStatement (statement: IfStatement<Statement>) (context: Evaluation
     | _ -> { context with Errors = "If statement condition must be a boolean" :: context.Errors}
 
 let evaluateBlockStatement (statement: BlockStatement<Statement>) (context: EvaluationContext) evaluateStatement: EvaluationContext =
-    let newContext = {  Enclosing = Some context; Variables = Map.empty; Errors = [] }
+    let newContext = { Enclosing = Some context; Variables = Map.empty; Errors = [] }
     let newResult = List.fold (fun currContext statement -> evaluateStatement statement currContext) newContext statement.Statements
-    { context with Errors = context.Errors @ newResult.Errors }
+    let newVariables = match newResult.Enclosing with
+                        | Some enclosing -> enclosing.Variables
+                        | None -> Map.empty
+    { context with Errors = context.Errors @ newResult.Errors; Variables = newVariables }
 
 let evaluateVariableStatement (statement: VarStatement) (context: EvaluationContext): EvaluationContext =
     let evaluatedExpression = ExpressionEvaluation.evaluateExpression statement.Initializer context
-    match evaluatedExpression with
-    | ExpressionEvaluation.Success value -> { context with Variables = Map.add statement.Name.Lexeme value context.Variables}
+    match evaluatedExpression, statement.RequiresExistingVariable with
+    | ExpressionEvaluation.Success value, false -> context.Insert statement.Name.Lexeme value
+    | ExpressionEvaluation.Success value, true ->
+        match context.Find statement.Name.Lexeme with
+        | None -> { context with Errors = "Variable does not exist" :: context.Errors}
+        | Some _ -> context.Update statement.Name.Lexeme value
     | _ -> { context with Errors = "Expression statement must be followed by an expression" :: context.Errors}
 
 let evaluateExpressionStatement (statement: ExpressionStatement) (context: EvaluationContext): EvaluationContext =
@@ -73,6 +94,7 @@ let rec evaluateStatement (statement: Statement) (context: EvaluationContext): E
         | Statement.VarStatement expr -> evaluateVariableStatement expr context
         | Statement.BlockStatement statements -> evaluateBlockStatement statements context evaluateStatement
         | Statement.IfStatement ifStatement -> evaluateIfStatement ifStatement context evaluateStatement
+        | Statement.WhileStatement whileStatement -> evaluateWhileStatement whileStatement context evaluateStatement
 
 let evaluateStatements (statements: Statement list) (context: EvaluationContext): EvaluationContext =
     List.fold (fun context statement -> evaluateStatement statement context) context statements
